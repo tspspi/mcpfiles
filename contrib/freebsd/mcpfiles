@@ -1,0 +1,58 @@
+#!/bin/sh
+#
+# PROVIDE: mcpfiles
+# REQUIRE: LOGIN
+# KEYWORD: shutdown
+#
+# Example rc.d script for running the mcpfiles MCP server as a FreeBSD daemon.
+
+. /etc/rc.subr
+
+name="mcpfiles"
+rcvar="mcpfiles_enable"
+extra_commands="reload"
+
+: ${mcpfiles_enable:="NO"}
+: ${mcpfiles_user:="mcpfiles"}
+: ${mcpfiles_group:="mcpfiles"}
+: ${mcpfiles_config:="/usr/local/etc/mcpfiles.conf"}
+: ${mcpfiles_transport:="remotehttp"}
+: ${mcpfiles_command:="/usr/local/bin/mcpfiles"}
+: ${mcpfiles_pidfile:="/var/run/${name}.pid"}
+: ${mcpfiles_logfile:="/var/log/${name}.log"}
+: ${mcpfiles_env:=""}
+
+pidfile="${mcpfiles_pidfile}"
+required_files="${mcpfiles_config}"
+
+start_precmd="mcpfiles_precmd"
+status_cmd="mcpfiles_status"
+command="/usr/sbin/daemon"
+command_args="-f -p ${pidfile} -u ${mcpfiles_user} -t mcpfiles -o ${mcpfiles_logfile} ${mcpfiles_env:+env ${mcpfiles_env} }${mcpfiles_command} --config ${mcpfiles_config} --transport ${mcpfiles_transport}"
+
+mcpfiles_precmd()
+{
+	install -d -o "${mcpfiles_user}" -g "${mcpfiles_group}" -m 0755 "$(dirname "${pidfile}")"
+	install -d -o "${mcpfiles_user}" -g "${mcpfiles_group}" -m 0755 "$(dirname "${mcpfiles_logfile}")"
+}
+
+mcpfiles_status()
+{
+	if [ -s "${pidfile}" ] && kill -0 "$(cat "${pidfile}")" 2>/dev/null; then
+		echo "${name} is running as pid $(cat "${pidfile}")"
+		return 0
+	fi
+	echo "${name} is not running"
+	return 1
+}
+
+mcpfiles_reload()
+{
+	if [ ! -s "${pidfile}" ]; then
+		echo "${name} is not running"
+		return 1
+	}
+	kill -HUP "$(cat "${pidfile}")"
+}
+
+run_rc_command "$1"
