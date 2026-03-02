@@ -20,7 +20,7 @@ pip install mcpfiles
 or via
 
 ```
-git clone TODO
+git clone git@github.com:tspspi/mcpfiles.git
 pip install -e .
 ```
 
