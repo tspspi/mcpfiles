@@ -1,7 +1,13 @@
 from pathlib import Path
 
 from mcpfiles.app.logging_utils import OperationLogger
-from mcpfiles.app.server import MCPFilesServerState, _apply_new_config_to_state, _build_stdio_key_config
+from mcpfiles.app.server import (
+    MCPFilesServerState,
+    _apply_new_config_to_state,
+    _build_fastmcp_server,
+    _build_remote_fastapi_app,
+    _build_stdio_key_config,
+)
 from mcpfiles.config.schema import APIKeyConfig, Config, LoggingConfig, QuotaConfig, StdIOConfig
 
 
@@ -73,3 +79,23 @@ def test_apply_new_config_to_state_refreshes_state(tmp_path):
     assert state.config is new_config
     assert Path(state.stdio_key.root) == new_stdio
     assert state.operation_logger.global_config.level == "DEBUG"
+
+
+def test_remote_app_mounts_fastmcp_at_public_mcp_path(tmp_path):
+    config = Config(
+        remote_server={"host": "127.0.0.1", "port": 8080},
+        api_keys=[
+            APIKeyConfig(
+                id="alpha",
+                kdf={"algorithm": "argon2id", "hash": "test"},
+                root=str(tmp_path / "alpha"),
+            )
+        ],
+    )
+    server, state = _build_fastmcp_server(config)
+
+    app = _build_remote_fastapi_app(server, state)
+    mcp_mount = next(route for route in app.routes if getattr(route, "path", None) == "/mcp")
+
+    assert mcp_mount.app is not None
+    assert app.router.lifespan_context is mcp_mount.app.lifespan

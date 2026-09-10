@@ -5,12 +5,12 @@ import os
 import signal
 import stat
 import threading
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from mcp.server.fastmcp import Context, FastMCP
+from fastmcp import Context, FastMCP
 
 from mcpfiles.app.errors import map_exception
 from mcpfiles.app.logging_utils import OperationLogger
@@ -537,15 +537,16 @@ def _build_remote_fastapi_app(server: FastMCP, state: MCPFilesServerState):
     STATUS_PATH = "/status"
     MCP_MOUNT_PATH = "/mcp"
 
-    mcp_http_app = server.streamable_http_app()
-
-    @asynccontextmanager
-    async def fastapi_lifespan(app):
-        async with AsyncExitStack() as stack:
-            await stack.enter_async_context(mcp_http_app.router.lifespan_context(mcp_http_app))
-            yield
-
-    fastapi_app = FastAPI(title="mcpfiles Remote Server", version="1.0", lifespan=fastapi_lifespan)
+    # FastMCP 4 owns the Streamable HTTP session manager.  Its lifespan must
+    # be used by the parent FastAPI app or the session manager is never
+    # initialized.  The root path keeps the public endpoint at /mcp after the
+    # app is mounted below.
+    mcp_http_app = server.http_app(path="/")
+    fastapi_app = FastAPI(
+        title="mcpfiles Remote Server",
+        version="1.0",
+        lifespan=mcp_http_app.lifespan,
+    )
 
     class APIKeyMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request: Request, call_next):

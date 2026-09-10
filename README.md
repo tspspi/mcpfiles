@@ -170,7 +170,7 @@ FASTMCP_LOG_LEVEL = "INFO"
 
 ```toml
 [mcp_servers.mcpfiles]
-url = "http://127.0.0.1:7889/mcp/mcp?api_key=XXXXXX"
+url = "http://127.0.0.1:7889/mcp?api_key=XXXXXX"
 ```
 
 ### JSON based MCP configuration
@@ -215,5 +215,4 @@ You are operating inside a sandbox rooted at /srv/mcpfiles/agentA. All paths mus
 - Projects: pass project_id to work inside .projects/<uuid>.
 - Typical workflow: list_dir -> read_file -> plan -> write_file/apply_patch -> get_metadata/stat_tree to verify.
 ```
-
 
